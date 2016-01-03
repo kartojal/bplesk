@@ -12,22 +12,7 @@ function init_script {
     echo -e ""$script_name": Starting to backup. \n Written with <3 by Kartojal.\n"
 
 }
-function check_backup_dir {
-    if [ -d $backup_dir ]
-    then
-        echo -e "[OK] The dir "$backup_dir" exists."
-        return
-    else
-        mkdir -p $backup_dir
-        if [ $? -eq 0 ]
-        then
-            return
-        else
-            exiting 2 $1
-        fi
-    fi
-}
-function check_vhosts_dir {
+function check_dir {
     if [ -d "$1" ]
     then
         echo "[OK] The dir "$1" exists."
@@ -36,6 +21,21 @@ function check_vhosts_dir {
         exiting 5 "$1"
     fi
 }
+function check_backup_dir {
+    if check_dir "$backup_dir" 
+    then
+        return
+    else
+        mkdir -p "$backup_dir"
+        if [ $? -eq 0 ]
+        then
+            return
+        else
+            exiting 2 $1
+        fi
+    fi
+}
+
 function mk_url_dir {
     mkdir -p "$1"
     if [ $? -eq 0 ]
@@ -43,11 +43,29 @@ function mk_url_dir {
         echo "Directory "$1" created."
         return
     else
-        exiting 3 $1
+        exiting 2 $1
     fi
 
 }
-
+function tar_backup {
+    local url_backup="$1"
+    local file_name="./"${url_backup:0:6}"_"$(date +"%d-%m-%Y")".tar.gz"
+    local target="$2"
+    tar -czf "./$file_name" -C "$target" httpdocs 
+    if [ "$?" -eq 0 ] && [ -f "$file_name" ]
+    then
+       echo -e "[OK] The "$url_backup" backup has been finished succesfuly.\n" 
+    else
+       exiting 6 "$url_backup"  
+    fi
+        
+}
+function check_and_backup {
+    echo -e "\n[INFO] Checks of "$1" starting."
+    check_dir "$2"
+    echo -e "[INFO] Backup of "$1" starting."
+    tar_backup "$1" "$2"
+}
 function domain_loop {
     declare -a urls=("${!1}")
     local n_urls=${#urls[@]}
@@ -62,11 +80,9 @@ function domain_loop {
 
             if [ -d $backup_url_dir ]
             then
-                echo "[...] Moving to "$backup_url_dir" directory."
                 cd "$backup_url_dir"
                 if [ $? -eq 0 ]
                 then
-                    echo "pwd: "$(pwd)""
                     check_and_backup $url $target_dir
                 fi
             else
@@ -81,24 +97,8 @@ function domain_loop {
     fi
 }
 
-function check_and_backup {
-    check_vhosts_dir "$2"
-    echo -e "\n[INFO] Backup of "$1" starting."
-    tar_backup "$1" "$2"
-}
-function tar_backup {
-    local url_backup="$1"
-    local file_name="./"${url_backup:0:6}"_"$(date +"%d-%m-%Y")".tar.gz"
-    local target="$2"
-    tar -czf "./$file_name" -C "$target" httpdocs 
-    if [ "$?" -eq 0 ] && [ -f "$file_name" ]
-    then
-       echo "[OK] The "$url_backup" backup has been finished succesfuly." 
-    else
-       exiting 6 "$url_backup"  
-    fi
-        
-}
+
+
 function exiting {
 echo ""
 case "$1" in
@@ -107,22 +107,18 @@ case "$1" in
         exit 0
         ;;
     2)
-        echo ""$script_name": Error while creating this directory  "$2""
+        echo ""$script_name": Error while creating this directory: "$2""
         exit 2
         ;;
-    3)
-        echo ""$script_name": Error while creating the next directory  "$2""
-        exit 3
-        ;;
-   4)
+    4)
         echo ""$script_name": No domains names in the \$domains array"
         exit 4
         ;;
-   5)
+    5)
         echo ""$script_name": The directory "$2" doesn't exist."
         exit 5
         ;;
-   6)
+    6)
         echo ""$script_name": Error while trying to backup the "$2" domain."
         exit 6
         ;;
@@ -141,9 +137,8 @@ init_script
 # Check backup directory, default $HOME/backups, if not exists, it make the dir
 check_backup_dir
 
-# Check the plesk vhost directory, if not exists, inform via exit error.
-
-check_vhosts_dir $vhost_dir
+# Check the plesk vhost directory. It exits if not exists.
+check_dir $vhost_dir
 
 # Start to backup all the domains array
 domain_loop domains[@]
