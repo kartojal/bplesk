@@ -18,7 +18,7 @@ function check_dir {
         echo "[OK] The dir "$1" exists."
         return 0
     else
-        exiting 5 "$1"
+        return 1
     fi
 }
 function check_backup_dir {
@@ -62,9 +62,13 @@ function tar_backup {
 }
 function check_and_backup {
     echo -e "\n[INFO] Checks of "$1" starting."
-    check_dir "$2"
-    echo -e "[INFO] Backup of "$1" starting."
-    tar_backup "$1" "$2"
+    if check_dir "$2"
+    then
+        echo -e "[INFO] Backup of "$1" starting."
+        tar_backup "$1" "$2"
+    else
+       exiting 3 "$1" "$2" 
+    fi
 }
 function domain_loop {
     declare -a urls=("${!1}")
@@ -110,13 +114,14 @@ case "$1" in
         echo ""$script_name": Error while creating this directory: "$2""
         exit 2
         ;;
+    3)
+        echo ""$script_name": Error while trying to backup the "$2" domain, the next directory doesn't exists: "$3""
+        exit 3
+        ;;
+
     4)
         echo ""$script_name": No domains names in the \$domains array"
         exit 4
-        ;;
-    5)
-        echo ""$script_name": The directory "$2" doesn't exist."
-        exit 5
         ;;
     6)
         echo ""$script_name": Error while trying to backup the "$2" domain."
