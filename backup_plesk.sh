@@ -37,7 +37,6 @@ function check_vhosts_dir {
     fi
 }
 function mk_url_dir {
-    echo  "Making the "$1" directory."
     mkdir -p "$1"
     if [ $? -eq 0 ]
     then
@@ -63,7 +62,7 @@ function domain_loop {
 
             if [ -d $backup_url_dir ]
             then
-                echo "Moving to "$backup_url_dir" directory."
+                echo "[...] Moving to "$backup_url_dir" directory."
                 cd "$backup_url_dir"
                 if [ $? -eq 0 ]
                 then
@@ -84,7 +83,7 @@ function domain_loop {
 
 function check_and_backup {
     check_vhosts_dir "$2"
-    echo -e "\n Backup of "$1" starting."
+    echo -e "\n[INFO] Backup of "$1" starting."
     tar_backup "$1" "$2"
 }
 function tar_backup {
@@ -94,7 +93,7 @@ function tar_backup {
     tar -czf "./$file_name" -C "$target" httpdocs 
     if [ "$?" -eq 0 ] && [ -f "$file_name" ]
     then
-       echo "[OK] The "$url_backup" has been done succesfuly." 
+       echo "[OK] The "$url_backup" backup has been finished succesfuly." 
     else
        exiting 6 "$url_backup"  
     fi
